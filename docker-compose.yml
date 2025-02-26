@@ -1,0 +1,29 @@
+version: '3'
+services:
+  r2-uploader:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    image: r2-uploader:latest
+    container_name: r2-uploader
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - ACCOUNT_ID=${ACCOUNT_ID}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
+      - R2_BUCKET_NAME=${R2_BUCKET_NAME}
+      - R2_PUBLIC_URL=${R2_PUBLIC_URL}
+    restart: unless-stopped
+    init: true
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3" 
