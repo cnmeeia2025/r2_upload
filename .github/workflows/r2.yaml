@@ -1,0 +1,30 @@
+
+name: Build Docker R2 Image and Upload Artifact
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Build the Docker image
+        run: |
+          docker buildx build --platform linux/amd64 -t r2 --load .
+      - name: Save Docker image as tar
+        run: |
+          docker save r2 -o r2.tar
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: r2_amd
+          path: r2.tar
