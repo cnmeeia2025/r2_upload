@@ -1,0 +1,39 @@
+{
+    "name": "r2-file-upload",
+    "version": "1.0.0",
+    "description": "Cloudflare R2 file upload example",
+    "main": "index.js",
+    "scripts": {
+        "start": "node index.js"
+    },
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "@aws-sdk/client-s3": "^3.0.0",
+        "dotenv": "^16.0.0",
+        "express": "^4.17.1",
+        "multer": "^1.4.4"
+    },
+    "devDependencies": {
+        "electron": "^28.3.3",
+        "electron-builder": "^24.13.3"
+    },
+    "build": {
+        "appId": "com.r2uploader.app",
+        "productName": "R2 Uploader",
+        "mac": {
+            "category": "public.app-category.utilities",
+            "icon": "build/r2.icns",
+            "hardenedRuntime": true,
+            "gatekeeperAssess": false,
+            "entitlements": "build/entitlements.mac.plist",
+            "entitlementsInherit": "build/entitlements.mac.plist"
+        },
+        "files": [
+            "**/*",
+            "!images${/*}",
+            "!**/*.md",
+            "!**/*.markdown"
+        ]
+    }
+}
