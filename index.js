@@ -14,7 +14,7 @@ const upload = multer({
   fileFilter: (req, file, cb) => {
     // 允许的文件类型
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
-    
+
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
@@ -81,7 +81,7 @@ app.get('/list-files', async (req, res) => {
 
     const response = await s3Client.send(command);
     const files = response.Contents || [];
-    
+
     // 按时间倒序排序，最新的在前面
     const sortedFiles = files
       .sort((a, b) => {
@@ -127,7 +127,13 @@ app.get('/', (req, res) => {
             padding: 0;
             box-sizing: border-box;
           }
-          
+
+          html, body {
+            height: 100%;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+          }
+
           body {
             min-height: 100vh;
             display: flex;
@@ -135,22 +141,27 @@ app.get('/', (req, res) => {
             align-items: center;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 20px;
+            padding: 0;
           }
-          
+
           .card {
             background: rgba(255, 255, 255, 0.95);
             border-radius: 20px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 800px;  /* 增加卡片宽度 */
-            overflow: hidden;
+            width: 90%;
+            max-width: 1200px;
+            height: auto; /* 改为自适应高度 */
+            min-height: 90vh;
+            margin: 20px auto;
+            display: flex;
+            flex-direction: column;
           }
 
           .upload-section {
-            padding: 2rem;
+            padding: 1.5rem; /* 减小上传区域的内边距 */
             border-bottom: 1px solid #edf2f7;
             text-align: center;
+            flex-shrink: 0;
           }
 
           .upload-area {
@@ -179,8 +190,12 @@ app.get('/', (req, res) => {
           }
 
           .gallery-section {
-            padding: 2rem;
+            padding: 1.5rem;
             background: #f7fafc;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto; /* 允许内容滚动 */
           }
 
           .gallery-title {
@@ -194,49 +209,41 @@ app.get('/', (req, res) => {
 
           .gallery-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1.5rem;  /* 增加图片间距 */
-            margin: 1.5rem 0;  /* 增加上下边距 */
-            padding: 0 1.5rem;  /* 增加左右内边距 */
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            padding: 0.5rem;
+            align-content: start; /* 从顶部开始排列 */
           }
 
           .gallery-item {
             position: relative;
             border-radius: 12px;
             overflow: hidden;
-            aspect-ratio: 1;  /* 保持1:1比例 */
-            min-height: 180px;  /* 设置最小高度 */
+            aspect-ratio: 16/9;
+            width: 100%;
+            min-height: 160px;
+            max-height: 260px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            transition: transform 0.2s, box-shadow 0.2s;
-          }
-
-          .gallery-item:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+            cursor: zoom-in;
+            background: #f0f0f0;
+            transform-origin: center;
+            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); /* 弹性动画 */
+            will-change: transform, box-shadow; /* 优化性能 */
           }
 
           .gallery-item img {
             width: 100%;
             height: 100%;
             object-fit: cover;
-            border-radius: 12px;
+            object-position: center;
+            transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            will-change: transform;
           }
 
-          .gallery-item-info {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            padding: 0.5rem;
-            background: rgba(0,0,0,0.7);
-            color: white;
-            font-size: 0.75rem;
-            opacity: 0;
-            transition: opacity 0.2s;
-          }
-
-          .gallery-item:hover .gallery-item-info {
-            opacity: 1;
+          .gallery-item:hover {
+            transform: scale(1.05);
+            box-shadow: 0 16px 32px rgba(0,0,0,0.15);
+            z-index: 1;
           }
 
           .selected-file {
@@ -309,6 +316,14 @@ app.get('/', (req, res) => {
             padding: 1rem;
             border-radius: 8px;
             display: none;
+            transform: translateY(10px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+          }
+
+          #upload-status.show {
+            transform: translateY(0);
+            opacity: 1;
           }
 
           .success {
@@ -327,20 +342,139 @@ app.get('/', (req, res) => {
             font-size: 0.9rem;
           }
 
-          /* 适配移动端 */
-          @media (max-width: 600px) {
+          /* 自定义滚动条样式 */
+          .gallery-section::-webkit-scrollbar {
+            width: 6px;
+          }
+
+          .gallery-section::-webkit-scrollbar-track {
+            background: transparent;
+          }
+
+          .gallery-section::-webkit-scrollbar-thumb {
+            background-color: rgba(155, 155, 155, 0.5);
+            border-radius: 3px;
+          }
+
+          /* 响应式调整 */
+          @media (max-width: 1200px) {
             .card {
-              margin: 10px;
+              width: 95%;
+              margin: 15px auto;
             }
-            
-            .gallery-grid {
-              gap: 1rem;
-              padding: 0 1rem;
+          }
+
+          @media (max-width: 768px) {
+            .card {
+              width: 98%;
+              margin: 10px auto;
+              min-height: 95vh;
             }
 
-            .gallery-item {
-              min-height: 120px;  /* 移动端稍微小一点 */
+            .gallery-grid {
+              grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+              gap: 15px;
             }
+          }
+
+          @media (max-width: 480px) {
+            body {
+              align-items: flex-start;
+            }
+
+            .card {
+              width: 100%;
+              margin: 0;
+              min-height: 100vh;
+              border-radius: 0;
+            }
+
+            .gallery-grid {
+              grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+              gap: 10px;
+              padding: 0.3rem;
+            }
+
+            .gallery-section {
+              padding: 1rem;
+            }
+          }
+
+          /* 修复 iOS Safari 100vh 问题 */
+          @supports (-webkit-touch-callout: none) {
+            .card {
+              min-height: -webkit-fill-available;
+            }
+          }
+
+          /* 空状态样式 */
+          .gallery-item.empty {
+            background: #f5f5f5;
+            border: 2px dashed #ddd;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: default;
+          }
+
+          .gallery-item.empty::after {
+            content: '等待上传';
+            color: #999;
+            font-size: 0.9rem;
+          }
+
+          /* 优化预览动画 */
+          .preview-overlay {
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(8px);
+            will-change: opacity;
+            cursor: zoom-out;
+          }
+
+          .preview-image-container {
+            position: fixed;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: transform, width, height;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transform-origin: top left;
+            z-index: 1001; /* 确保图片始终在遮罩层上方 */
+          }
+
+          .preview-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 12px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.3);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: opacity, transform;
+            cursor: auto;
+            opacity: 1; /* 默认显示 */
+          }
+
+          .preview-overlay.active {
+            opacity: 1;
+            visibility: visible;
+          }
+
+          /* 添加淡出动画类 */
+          .preview-overlay.fade-out {
+            opacity: 0;
+            transition: opacity 0.3s ease-out;
           }
         </style>
       </head>
@@ -366,12 +500,19 @@ app.get('/', (req, res) => {
 
           <div class="gallery-section">
             <div class="gallery-title">
-              <span>最近上传</span>
             </div>
             <div id="gallery-grid" class="gallery-grid">
               <div class="loading">加载中...</div>
             </div>
           </div>
+        </div>
+
+        <!-- 修改预览遮罩层结构 -->
+        <div class="preview-overlay" id="preview-overlay">
+          <div class="preview-image-container">
+            <img class="preview-image" id="preview-image" src="" alt="预览图片">
+          </div>
+          <button class="preview-close" onclick="closePreview()">×</button>
         </div>
 
         <script>
@@ -387,6 +528,8 @@ app.get('/', (req, res) => {
 
           let refreshTimer = null;
           let lastUploadTime = 0;
+          let lastClickedImage = null;
+          let isAnimating = false; // 添加动画状态标记
 
           function updateFileSelection(file) {
             if (file) {
@@ -430,7 +573,7 @@ app.get('/', (req, res) => {
             }
           });
 
-          async function loadFiles() {
+          async function loadFiles(retryCount = 3) {
             try {
               const response = await fetch('/list-files?' + new Date().getTime());
               const files = await response.json();
@@ -440,27 +583,147 @@ app.get('/', (req, res) => {
                 return;
               }
 
-              // 更新图片槽位
-              files.forEach((file, index) => {
-                imageSlots[index] = file.url;
-              });
-
-              // 生成HTML，保持3个位置
-              const htmlContent = imageSlots.map((url, index) => {
-                if (!url) return '<div class="gallery-item empty"></div>';
-                return '<a href="' + url + '" target="_blank" class="gallery-item">' +
-                       '<img src="' + url + '?t=' + new Date().getTime() + '" loading="lazy">' +
-                       '</a>';
+              const htmlContent = files.map(file => {
+                const timestamp = new Date().getTime();
+                return \`
+                  <div class="gallery-item" onclick="showPreview('\${file.url}', event)">
+                    <img src="\${file.url}?t=\${timestamp}" loading="lazy" alt="上传的图片">
+                  </div>
+                \`;
               }).join('');
+
+              // 如果文件数量少于3个，添加空占位符
+              const emptySlots = 3 - files.length;
+              for (let i = 0; i < emptySlots; i++) {
+                htmlContent += '<div class="gallery-item empty"></div>';
+              }
 
               galleryGrid.innerHTML = htmlContent;
             } catch (error) {
               console.error('加载文件失败:', error);
-              galleryGrid.innerHTML = '<div class="loading">加载失败</div>';
+              if (retryCount > 0) {
+                // 失败后延迟重试
+                setTimeout(() => loadFiles(retryCount - 1), 500);
+              } else {
+                galleryGrid.innerHTML = '<div class="loading">加载失败</div>';
+              }
             }
           }
 
-          // 上传成功后立即刷新列表
+          function showPreview(url, event) {
+            if (isAnimating) return;
+            isAnimating = true;
+
+            const clickedImage = event.currentTarget.querySelector('img');
+            const previewImage = document.getElementById('preview-image');
+            const previewContainer = document.querySelector('.preview-image-container');
+            const overlay = document.getElementById('preview-overlay');
+
+            lastClickedImage = clickedImage;
+            const rect = clickedImage.getBoundingClientRect();
+
+            // 预加载图片
+            const tempImage = new Image();
+            tempImage.onload = () => {
+              // 先设置图片
+              previewImage.src = url;
+              
+              // 设置初始位置
+              previewContainer.style.top = rect.top + 'px';
+              previewContainer.style.left = rect.left + 'px';
+              previewContainer.style.width = rect.width + 'px';
+              previewContainer.style.height = rect.height + 'px';
+
+              requestAnimationFrame(() => {
+                // 显示遮罩层
+                overlay.classList.add('active');
+                document.body.style.overflow = 'hidden';
+
+                // 移动到屏幕中心
+                previewContainer.style.top = '50%';
+                previewContainer.style.left = '50%';
+                previewContainer.style.width = '90vw';
+                previewContainer.style.height = '85vh';
+                previewContainer.style.transform = 'translate(-50%, -50%)';
+
+                setTimeout(() => {
+                  isAnimating = false;
+                }, 500);
+              });
+            };
+            tempImage.src = url;
+
+            overlay.onclick = handleOverlayClick;
+            document.addEventListener('keydown', handleEscKey);
+          }
+
+          function handleOverlayClick(e) {
+            if (e.target.classList.contains('preview-overlay')) {
+              closePreview();
+            }
+          }
+
+          function closePreview() {
+            if (!lastClickedImage || isAnimating) return;
+            isAnimating = true;
+
+            const overlay = document.getElementById('preview-overlay');
+            const previewContainer = document.querySelector('.preview-image-container');
+            const previewImage = document.getElementById('preview-image');
+
+            try {
+              const rect = lastClickedImage.getBoundingClientRect();
+
+              // 先开始遮罩层的淡出
+              overlay.classList.add('fade-out');
+
+              // 图片容器动画回到原始位置
+              requestAnimationFrame(() => {
+                previewContainer.style.transform = 'translate(0, 0)';
+                previewContainer.style.top = rect.top + 'px';
+                previewContainer.style.left = rect.left + 'px';
+                previewContainer.style.width = rect.width + 'px';
+                previewContainer.style.height = rect.height + 'px';
+
+                // 等待动画完成后清理
+                setTimeout(() => {
+                  overlay.classList.remove('active', 'fade-out');
+                  document.body.style.overflow = '';
+                  
+                  // 移除事件监听
+                  overlay.onclick = null;
+                  document.removeEventListener('keydown', handleEscKey);
+                  
+                  // 重置状态
+                  setTimeout(() => {
+                    previewContainer.style = '';
+                    previewImage.src = '';
+                    lastClickedImage = null;
+                    isAnimating = false;
+                  }, 50); // 减少延迟时间
+                }, 300); // 减少等待时间
+              });
+            } catch (error) {
+              // 错误处理：直接重置所有状态
+              console.error('Close preview error:', error);
+              overlay.classList.remove('active', 'fade-out');
+              document.body.style.overflow = '';
+              previewContainer.style = '';
+              previewImage.src = '';
+              overlay.onclick = null;
+              document.removeEventListener('keydown', handleEscKey);
+              lastClickedImage = null;
+              isAnimating = false;
+            }
+          }
+
+          function handleEscKey(e) {
+            if (e.key === 'Escape') {
+              closePreview();
+            }
+          }
+
+          // 修改上传表单处理函数
           uploadForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const formData = new FormData(uploadForm);
@@ -478,14 +741,23 @@ app.get('/', (req, res) => {
               const result = await response.json();
               
               if (response.ok) {
-                uploadStatus.className = 'success';
-                uploadStatus.innerHTML = '上传成功！<br><a href="' + result.fileUrl + '" target="_blank">查看文件</a>';
-                lastUploadTime = Date.now();
-                await loadFiles(); // 立即刷新列表
+                uploadStatus.className = 'success show';
+                uploadStatus.textContent = '上传成功！';
                 
-                // 上传成功后的额外刷新
-                clearTimeout(refreshTimer);
-                refreshTimer = setTimeout(loadFiles, 2000); // 2秒后再刷新一次确保更新
+                // 清除表单状态
+                fileInput.value = '';
+                updateFileSelection(null);
+                
+                // 立即刷新图片列表
+                await loadFiles();
+                
+                // 2秒后淡出
+                setTimeout(() => {
+                  uploadStatus.classList.remove('show');
+                  setTimeout(() => {
+                    uploadStatus.style.display = 'none';
+                  }, 400); // 等待淡出动画完成
+                }, 2000);
               } else {
                 throw new Error(result.error);
               }
@@ -496,7 +768,6 @@ app.get('/', (req, res) => {
               submitButton.disabled = false;
               submitButton.textContent = '上传文件';
               uploadStatus.style.display = 'block';
-              fileInput.value = '';
             }
           });
 
@@ -516,7 +787,7 @@ app.get('/', (req, res) => {
       </body>
     </html>
   `;
-  
+
   res.send(html);
 });
 
