@@ -1,7 +1,11 @@
-const express = require('express');
-const multer = require('multer');
-const { S3Client, PutObjectCommand, ListObjectsV2Command } = require('@aws-sdk/client-s3');
-const dotenv = require('dotenv');
+const express = require("express");
+const multer = require("multer");
+const {
+  S3Client,
+  PutObjectCommand,
+  ListObjectsV2Command,
+} = require("@aws-sdk/client-s3");
+const dotenv = require("dotenv");
 
 // 加载环境变量
 dotenv.config();
@@ -9,35 +13,35 @@ dotenv.config();
 const app = express();
 const upload = multer({
   limits: {
-    fileSize: 5 * 1024 * 1024, // 限制 5MB
+    fileSize: 50 * 5024 * 5024, 
   },
   fileFilter: (req, file, cb) => {
     // 允许的文件类型
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/mp4", "image/webm", "image/avif"];
 
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('不支持的文件类型'));
+      cb(new Error("不支持的文件类型"));
     }
-  }
+  },
 });
 
 // 配置 S3 客户端（用于 R2）
 const s3Client = new S3Client({
-  region: 'auto',
+  region: "auto",
   endpoint: `https://${process.env.ACCOUNT_ID}.r2.cloudflarestorage.com`,
   credentials: {
     accessKeyId: process.env.R2_ACCESS_KEY_ID,
     secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
-  }
+  },
 });
 
 // 文件上传接口
-app.post('/upload', upload.single('file'), async (req, res) => {
+app.post("/upload", upload.single("file"), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ error: '没有文件被上传' });
+      return res.status(400).json({ error: "没有文件被上传" });
     }
 
     const file = req.file;
@@ -55,28 +59,27 @@ app.post('/upload', upload.single('file'), async (req, res) => {
     const fileUrl = `https://${process.env.R2_PUBLIC_URL}/${fileName}`;
 
     res.json({
-      message: '文件上传成功',
+      message: "文件上传成功",
       fileName: fileName,
-      fileUrl: fileUrl
+      fileUrl: fileUrl,
     });
-
   } catch (error) {
-    console.error('上传错误:', error);
-    res.status(500).json({ error: '文件上传失败' });
+    console.error("上传错误:", error);
+    res.status(500).json({ error: "文件上传失败" });
   }
 });
 
 // 获取文件列表接口
-app.get('/list-files', async (req, res) => {
+app.get("/list-files", async (req, res) => {
   try {
     // 添加缓存控制头
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
 
     const command = new ListObjectsV2Command({
       Bucket: process.env.R2_BUCKET_NAME,
-      MaxKeys: 100  // 先获取更多文件
+      MaxKeys: 100, // 先获取更多文件
     });
 
     const response = await s3Client.send(command);
@@ -90,31 +93,31 @@ app.get('/list-files', async (req, res) => {
         const timeB = new Date(a.LastModified).getTime();
         return timeA - timeB;
       })
-      .slice(0, 3)  // 只取最新的3张
-      .map(file => ({
+      .slice(0, 3) // 只取最新的3张
+      .map((file) => ({
         name: file.Key,
         url: `https://${process.env.R2_PUBLIC_URL}/${file.Key}`,
         size: file.Size,
-        lastModified: file.LastModified
+        lastModified: file.LastModified,
       }));
 
-    console.log('获取的文件列表:', {
+    console.log("获取的文件列表:", {
       total: files.length,
-      sorted: sortedFiles.map(f => ({
+      sorted: sortedFiles.map((f) => ({
         name: f.name,
-        lastModified: f.lastModified
-      }))
+        lastModified: f.lastModified,
+      })),
     });
 
     res.json(sortedFiles);
   } catch (error) {
-    console.error('获取文件列表错误:', error);
-    res.status(500).json({ error: '获取文件列表失败' });
+    console.error("获取文件列表错误:", error);
+    res.status(500).json({ error: "获取文件列表失败" });
   }
 });
 
 // 主页面路由
-app.get('/', (req, res) => {
+app.get("/", (req, res) => {
   const html = `
     <html>
       <head>
@@ -130,8 +133,7 @@ app.get('/', (req, res) => {
 
           html, body {
             height: 100%;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
+            overflow: hidden; /* 防止页面滚动 */
           }
 
           body {
@@ -141,7 +143,7 @@ app.get('/', (req, res) => {
             align-items: center;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 0;
+            padding: 0; /* 移除内边距 */
           }
 
           .card {
@@ -150,9 +152,9 @@ app.get('/', (req, res) => {
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             width: 90%;
             max-width: 1200px;
-            height: auto; /* 改为自适应高度 */
-            min-height: 90vh;
-            margin: 20px auto;
+            height: 90vh;
+            margin: 0 auto;
+            overflow: hidden;
             display: flex;
             flex-direction: column;
           }
@@ -190,12 +192,11 @@ app.get('/', (req, res) => {
           }
 
           .gallery-section {
-            padding: 1.5rem;
+            padding: 1.5rem 1.5rem 2rem;
             background: #f7fafc;
             flex: 1;
             display: flex;
             flex-direction: column;
-            overflow-y: auto; /* 允许内容滚动 */
           }
 
           .gallery-title {
@@ -211,8 +212,9 @@ app.get('/', (req, res) => {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 25px;
-            padding: 0.5rem;
-            align-content: start; /* 从顶部开始排列 */
+            padding: 0.5rem 0.5rem 1rem;
+            flex: 1;
+            align-content: center; /* 居中显示网格内容 */
           }
 
           .gallery-item {
@@ -220,15 +222,13 @@ app.get('/', (req, res) => {
             border-radius: 12px;
             overflow: hidden;
             aspect-ratio: 16/9;
-            width: 100%;
             min-height: 160px;
-            max-height: 260px;
+            max-height: 260px; /* 进一步减小最大高度 */
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
             cursor: zoom-in;
             background: #f0f0f0;
             transform-origin: center;
-            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); /* 弹性动画 */
-            will-change: transform, box-shadow; /* 优化性能 */
           }
 
           .gallery-item img {
@@ -236,14 +236,17 @@ app.get('/', (req, res) => {
             height: 100%;
             object-fit: cover;
             object-position: center;
-            transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-            will-change: transform;
+            transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
           }
 
           .gallery-item:hover {
-            transform: scale(1.05);
-            box-shadow: 0 16px 32px rgba(0,0,0,0.15);
+            transform: scale(1.08);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.2);
             z-index: 1;
+          }
+
+          .gallery-item:hover img {
+            transform: none;
           }
 
           .selected-file {
@@ -316,14 +319,6 @@ app.get('/', (req, res) => {
             padding: 1rem;
             border-radius: 8px;
             display: none;
-            transform: translateY(10px);
-            opacity: 0;
-            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-          }
-
-          #upload-status.show {
-            transform: translateY(0);
-            opacity: 1;
           }
 
           .success {
@@ -342,68 +337,56 @@ app.get('/', (req, res) => {
             font-size: 0.9rem;
           }
 
-          /* 自定义滚动条样式 */
-          .gallery-section::-webkit-scrollbar {
-            width: 6px;
-          }
-
-          .gallery-section::-webkit-scrollbar-track {
-            background: transparent;
-          }
-
-          .gallery-section::-webkit-scrollbar-thumb {
-            background-color: rgba(155, 155, 155, 0.5);
-            border-radius: 3px;
-          }
-
           /* 响应式调整 */
           @media (max-width: 1200px) {
             .card {
               width: 95%;
-              margin: 15px auto;
+              height: 92vh;
+            }
+
+            .gallery-item {
+              max-height: 240px;
             }
           }
 
           @media (max-width: 768px) {
             .card {
               width: 98%;
-              margin: 10px auto;
-              min-height: 95vh;
+              height: 94vh;
+            }
+            
+            .gallery-section {
+              padding: 1rem 1rem 1.5rem;
             }
 
             .gallery-grid {
-              grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-              gap: 15px;
+              gap: 20px;
+              padding: 0.5rem 0.5rem 0.8rem;
+            }
+
+            .gallery-item {
+              max-height: 220px;
             }
           }
 
           @media (max-width: 480px) {
-            body {
-              align-items: flex-start;
-            }
-
             .card {
               width: 100%;
-              margin: 0;
-              min-height: 100vh;
+              height: 100vh;
               border-radius: 0;
+            }
+            
+            .gallery-section {
+              padding: 0.8rem 0.8rem 1.2rem;
             }
 
             .gallery-grid {
-              grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-              gap: 10px;
-              padding: 0.3rem;
+              gap: 15px;
+              padding: 0.3rem 0.3rem 0.6rem;
             }
 
-            .gallery-section {
-              padding: 1rem;
-            }
-          }
-
-          /* 修复 iOS Safari 100vh 问题 */
-          @supports (-webkit-touch-callout: none) {
-            .card {
-              min-height: -webkit-fill-available;
+            .gallery-item {
+              max-height: 200px;
             }
           }
 
@@ -423,11 +406,9 @@ app.get('/', (req, res) => {
             font-size: 0.9rem;
           }
 
-          /* 优化预览动画 */
+          /* 修改预览遮罩层效果 */
           .preview-overlay {
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            display: none;
             position: fixed;
             top: 0;
             left: 0;
@@ -435,46 +416,62 @@ app.get('/', (req, res) => {
             height: 100%;
             background: rgba(0, 0, 0, 0.95);
             z-index: 1000;
-            display: flex;
             justify-content: center;
             align-items: center;
             backdrop-filter: blur(8px);
-            will-change: opacity;
-            cursor: zoom-out;
-          }
-
-          .preview-image-container {
-            position: fixed;
-            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-            will-change: transform, width, height;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            transform-origin: top left;
-            z-index: 1001; /* 确保图片始终在遮罩层上方 */
-          }
-
-          .preview-image {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            border-radius: 12px;
-            box-shadow: 0 0 30px rgba(0,0,0,0.3);
-            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-            will-change: opacity, transform;
-            cursor: auto;
-            opacity: 1; /* 默认显示 */
+            opacity: 0;
+            transition: opacity 0.3s ease;
           }
 
           .preview-overlay.active {
+            display: flex;
             opacity: 1;
-            visibility: visible;
           }
 
-          /* 添加淡出动画类 */
-          .preview-overlay.fade-out {
-            opacity: 0;
-            transition: opacity 0.3s ease-out;
+          .preview-image-container {
+            position: relative;
+            max-width: 90%;
+            max-height: 90vh;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(0,0,0,0.3);
+            transform: scale(0.9);
+            transition: all 0.3s ease;
+          }
+
+          .preview-overlay.active .preview-image-container {
+            transform: scale(1);
+          }
+
+          .preview-image {
+            display: block;
+            max-width: 100%;
+            max-height: 90vh;
+            object-fit: contain;
+            border-radius: 12px;
+          }
+
+          .preview-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+          }
+
+          .preview-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: rotate(90deg);
           }
         </style>
       </head>
@@ -485,7 +482,7 @@ app.get('/', (req, res) => {
             <div class="upload-area" id="drop-zone">
               <div style="font-size: 2rem; margin-bottom: 1rem;">📁</div>
               <p class="upload-text">点击或拖拽文件到这里上传</p>
-              <p class="upload-text" style="font-size: 0.8rem;">支持 jpg、png、gif 格式，最大 5MB</p>
+              <p class="upload-text" style="font-size: 0.8rem;">支持 jpg、png、gif mp4  格式，最大 50MB</p>
             </div>
             <div id="selected-file" class="selected-file">
               <span class="file-name"></span>
@@ -511,6 +508,7 @@ app.get('/', (req, res) => {
         <div class="preview-overlay" id="preview-overlay">
           <div class="preview-image-container">
             <img class="preview-image" id="preview-image" src="" alt="预览图片">
+            <a id="preview-link" href="" target="_blank" style="display: none; color: white; text-decoration: underline; margin-top: 1rem;"></a>
           </div>
           <button class="preview-close" onclick="closePreview()">×</button>
         </div>
@@ -528,8 +526,6 @@ app.get('/', (req, res) => {
 
           let refreshTimer = null;
           let lastUploadTime = 0;
-          let lastClickedImage = null;
-          let isAnimating = false; // 添加动画状态标记
 
           function updateFileSelection(file) {
             if (file) {
@@ -586,7 +582,7 @@ app.get('/', (req, res) => {
               const htmlContent = files.map(file => {
                 const timestamp = new Date().getTime();
                 return \`
-                  <div class="gallery-item" onclick="showPreview('\${file.url}', event)">
+                  <div class="gallery-item" onclick="showPreview('\${file.url}')">
                     <img src="\${file.url}?t=\${timestamp}" loading="lazy" alt="上传的图片">
                   </div>
                 \`;
@@ -610,118 +606,36 @@ app.get('/', (req, res) => {
             }
           }
 
-          function showPreview(url, event) {
-            if (isAnimating) return;
-            isAnimating = true;
+          // 修改预览相关函数
+          const previewOverlay = document.getElementById('preview-overlay');
+          const previewImage = document.getElementById('preview-image');
+          const previewLink = document.getElementById('preview-link');
 
-            const clickedImage = event.currentTarget.querySelector('img');
-            const previewImage = document.getElementById('preview-image');
-            const previewContainer = document.querySelector('.preview-image-container');
-            const overlay = document.getElementById('preview-overlay');
-
-            lastClickedImage = clickedImage;
-            const rect = clickedImage.getBoundingClientRect();
-
-            // 预加载图片
-            const tempImage = new Image();
-            tempImage.onload = () => {
-              // 先设置图片
-              previewImage.src = url;
-              
-              // 设置初始位置
-              previewContainer.style.top = rect.top + 'px';
-              previewContainer.style.left = rect.left + 'px';
-              previewContainer.style.width = rect.width + 'px';
-              previewContainer.style.height = rect.height + 'px';
-
-              requestAnimationFrame(() => {
-                // 显示遮罩层
-                overlay.classList.add('active');
-                document.body.style.overflow = 'hidden';
-
-                // 移动到屏幕中心
-                previewContainer.style.top = '50%';
-                previewContainer.style.left = '50%';
-                previewContainer.style.width = '90vw';
-                previewContainer.style.height = '85vh';
-                previewContainer.style.transform = 'translate(-50%, -50%)';
-
-                setTimeout(() => {
-                  isAnimating = false;
-                }, 500);
-              });
-            };
-            tempImage.src = url;
-
-            overlay.onclick = handleOverlayClick;
-            document.addEventListener('keydown', handleEscKey);
-          }
-
-          function handleOverlayClick(e) {
-            if (e.target.classList.contains('preview-overlay')) {
-              closePreview();
-            }
+          function showPreview(url) {
+            window.open(url, '_blank');
           }
 
           function closePreview() {
-            if (!lastClickedImage || isAnimating) return;
-            isAnimating = true;
+            previewOverlay.classList.remove('active');
+            document.body.style.overflow = ''; // 恢复滚动
 
-            const overlay = document.getElementById('preview-overlay');
-            const previewContainer = document.querySelector('.preview-image-container');
-            const previewImage = document.getElementById('preview-image');
-
-            try {
-              const rect = lastClickedImage.getBoundingClientRect();
-
-              // 先开始遮罩层的淡出
-              overlay.classList.add('fade-out');
-
-              // 图片容器动画回到原始位置
-              requestAnimationFrame(() => {
-                previewContainer.style.transform = 'translate(0, 0)';
-                previewContainer.style.top = rect.top + 'px';
-                previewContainer.style.left = rect.left + 'px';
-                previewContainer.style.width = rect.width + 'px';
-                previewContainer.style.height = rect.height + 'px';
-
-                // 等待动画完成后清理
-                setTimeout(() => {
-                  overlay.classList.remove('active', 'fade-out');
-                  document.body.style.overflow = '';
-                  
-                  // 移除事件监听
-                  overlay.onclick = null;
-                  document.removeEventListener('keydown', handleEscKey);
-                  
-                  // 重置状态
-                  setTimeout(() => {
-                    previewContainer.style = '';
-                    previewImage.src = '';
-                    lastClickedImage = null;
-                    isAnimating = false;
-                  }, 50); // 减少延迟时间
-                }, 300); // 减少等待时间
-              });
-            } catch (error) {
-              // 错误处理：直接重置所有状态
-              console.error('Close preview error:', error);
-              overlay.classList.remove('active', 'fade-out');
-              document.body.style.overflow = '';
-              previewContainer.style = '';
-              previewImage.src = '';
-              overlay.onclick = null;
-              document.removeEventListener('keydown', handleEscKey);
-              lastClickedImage = null;
-              isAnimating = false;
-            }
+            // 隐藏图片链接和名称
+            previewLink.style.display = 'none';
           }
 
-          function handleEscKey(e) {
+          // 点击遮罩层关闭预览
+          previewOverlay.addEventListener('click', (e) => {
+            if (e.target === previewOverlay) {
+              closePreview();
+            }
+          });
+
+          // ESC 键关闭预览
+          document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
               closePreview();
             }
-          }
+          });
 
           // 修改上传表单处理函数
           uploadForm.addEventListener('submit', async (e) => {
@@ -741,8 +655,8 @@ app.get('/', (req, res) => {
               const result = await response.json();
               
               if (response.ok) {
-                uploadStatus.className = 'success show';
-                uploadStatus.textContent = '上传成功！';
+                uploadStatus.className = 'success';
+                uploadStatus.innerHTML = '上传成功！';
                 
                 // 清除表单状态
                 fileInput.value = '';
@@ -751,13 +665,14 @@ app.get('/', (req, res) => {
                 // 立即刷新图片列表
                 await loadFiles();
                 
-                // 2秒后淡出
-                setTimeout(() => {
-                  uploadStatus.classList.remove('show');
+                // 短暂延迟后再次刷新，确保新图片加载
+                setTimeout(async () => {
+                  await loadFiles();
+                  // 隐藏成功消息
                   setTimeout(() => {
                     uploadStatus.style.display = 'none';
-                  }, 400); // 等待淡出动画完成
-                }, 2000);
+                  }, 2000);
+                }, 500);
               } else {
                 throw new Error(result.error);
               }
@@ -794,8 +709,8 @@ app.get('/', (req, res) => {
 // 错误处理中间件
 app.use((error, req, res, next) => {
   if (error instanceof multer.MulterError) {
-    if (error.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ error: '文件大小超过限制' });
+    if (error.code === "LIMIT_FILE_SIZE") {
+      return res.status(400).json({ error: "文件大小超过限制" });
     }
   }
   res.status(400).json({ error: error.message });
@@ -806,16 +721,18 @@ const PORT = process.env.PORT || 3000;
 let currentPort = PORT;
 
 function startServer(port) {
-  const server = app.listen(port, () => {
-    console.log(`服务器运行在 http://localhost:${port}`);
-  }).on('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
-      console.log(`端口 ${port} 已被占用，尝试端口 ${port + 1}`);
-      startServer(port + 1);
-    } else {
-      console.error('服务器启动错误:', err);
-    }
-  });
+  const server = app
+    .listen(port, () => {
+      console.log(`服务器运行在 http://localhost:${port}`);
+    })
+    .on("error", (err) => {
+      if (err.code === "EADDRINUSE") {
+        console.log(`端口 ${port} 已被占用，尝试端口 ${port + 1}`);
+        startServer(port + 1);
+      } else {
+        console.error("服务器启动错误:", err);
+      }
+    });
 
   return server;
 }
@@ -823,4 +740,4 @@ function startServer(port) {
 const server = startServer(currentPort);
 
 // 导出 server 实例
-module.exports = server; 
+module.exports = server;
