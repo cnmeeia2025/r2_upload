@@ -17,14 +17,26 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
 
-      - name: Build the Docker image
+      - name: Build the Docker image for amd64
         run: |
-          docker buildx build --platform linux/amd64 -t r2 --load .
-      - name: Save Docker image as tar
+          docker buildx build --platform linux/amd64 -t r2:amd64 --load .
+      
+      - name: Build the Docker image for arm64
         run: |
-          docker save r2 -o r2.tar
-      - name: Upload Docker image artifact
+          docker buildx build --platform linux/arm64 -t r2:arm64 --load .
+      
+      - name: Save Docker image as tar for amd64
+        run: |
+          docker save r2:amd64 -o r2_amd64.tar
+      
+      - name: Save Docker image as tar for arm64
+        run: |
+          docker save r2:arm64 -o r2_arm64.tar
+      
+      - name: Upload Docker image artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: r2_amd
-          path: r2.tar
+          name: r2_images
+          path: |
+            r2_amd64.tar
+            r2_arm64.tar
