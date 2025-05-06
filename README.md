@@ -44,22 +44,15 @@ docker build -t r2-uploader:latest .
 
 ```sh
 docker run -d \
+  --name r2-uploader \
+  -p 3000:3000 \
+  -e ACCOUNT_ID=your_account_id \
+  -e R2_ACCESS_KEY_ID=your_access_key \
+  -e R2_SECRET_ACCESS_KEY=your_secret_key \
+  -e R2_BUCKET_NAME=your_bucket_name \
+  -e R2_PUBLIC_URL=your_public_url \
+  r2-uploader:latest
 
---name r2-uploader \
-
--p 3000:3000 \
-
--e ACCOUNT_ID=your_account_id \
-
--e R2_ACCESS_KEY_ID=your_access_key \
-
--e R2_SECRET_ACCESS_KEY=your_secret_key \
-
--e R2_BUCKET_NAME=your_bucket_name \
-
--e R2_PUBLIC_URL=your_public_url \
-
-r2-uploader:latest
 ```
 
 ##### 3. 查看日志
